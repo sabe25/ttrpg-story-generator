@@ -1,4 +1,4 @@
-#!/Users/thomassablattnig/Private/projects/camel-test/bin/python3.12
+#!/Users/thomassablattnig/Private/projects/camel-test/bin/python3.10
 # -*- coding: utf-8 -*-
 import re
 import sys
