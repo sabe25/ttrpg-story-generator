@@ -21,7 +21,10 @@ from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from camel.tasks import Task
 from camel.utils import print_text_animated, OpenAITokenCounter
-from camel.loaders.base_io import PdfFile
+from camel.loaders.base_io import TxtFile
+from camel.loaders.unstructured_io import UnstructuredIO as uio
+from sympy import refine
+from torch import while_loop
 
 
 def main(model=None, chat_turn_limit=10) -> None:
@@ -63,18 +66,16 @@ def main(model=None, chat_turn_limit=10) -> None:
     # task = workforce.process_task(task)
 
     # Read a pdf file from disk
-    with open("../dragon_icespire_peak_preview.pdf", "rb") as file:
+    with open("../dnd-one-shot-example.txt", "rb") as file:
         file_content = BytesIO(file.read())
-        file_content.name = "dragon_icespire_peak_preview.pdf"
+        file_content.name = "dnd-one-shot-example.txt"
 
     # Use the read_file function to create an object based on the file extension
-    file_obj = PdfFile.from_bytes(file_content, file_content.name)
+    file_obj = TxtFile.from_bytes(file_content, file_content.name)
 
     # Once you have the File object, you can access its content
-    print(file_obj.docs[3]["page_content"])
-    file_obj.docs.pop(0)
-    file_obj.docs.pop(1)
-    file_obj.docs.pop(2)
+    print(file_obj.docs[0]["page_content"])
+
 
     sum_msg = BaseMessage.make_assistant_message(
         "Content Creator",
@@ -100,28 +101,78 @@ def main(model=None, chat_turn_limit=10) -> None:
         ),
         role_at_backend=OpenAIBackendRole.USER,
     )]
-    for page in file_obj.docs:
-        records.append(MemoryRecord(
-            message=BaseMessage.make_user_message(
-                role_name="Tutor",
-                meta_dict=None,
-                content=page["page_content"],
-            ),
-            role_at_backend=OpenAIBackendRole.USER,
-        ))
+    # Set clean options
+    options = [
+        ('replace_unicode_quotes', {}),
+        ('clean_dashes', {}),
+        ('clean_non_ascii_chars', {}),
+        ('clean_extra_whitespace', {}),
+    ]
+
+    cleaned_text = uio.clean_text_data(text=file_obj.docs[0]["page_content"], clean_options=options)
+    records.append(MemoryRecord(
+        message=BaseMessage.make_user_message(
+            role_name="Tutor",
+            meta_dict=None,
+            content=cleaned_text,
+        ),
+        role_at_backend=OpenAIBackendRole.USER,
+    ))
 
     memory.write_records(records)
-    # Get context for the agent
-    context, token_count = memory.get_context()
+    sum_agent.memory = memory
 
-    print(context)
-    print(f"Retrieved context (token count: {token_count}):")
-    for message in context:
-        print(f"{message}")
-    # sum_agent.memory = memory
+    msg = BaseMessage.make_user_message("User", "What is the story about?")
+    response = sum_agent.step(msg)
+    print(response.msg)
 
+def refine_user_input(max_steps=10) -> None:
+    refinement_msg = BaseMessage.make_user_message(
+        "Story arch writer",
+        "You are a creative writer focused on writing story arch for dnd one-shots. "
+        "You create broad overviews of story archs. For you important is that each story has the following features."
+        "A plot hook, something that the player want to help or solve the problem"
+        "The environment, where the story is told and the vibe of the surroundings induce a certain feeling."
+        "The setting, that set the overall theme of the story. "
+        "Surprice Elements are also fun but optional, it is something the player are not expecting."
+        "If the setting is not further discussed assume that it is a medival high fantasy setting."
+        "A thread, something the players are eager to solve, whether it is a social conflict or existencial thread to a village you are open to it all."
+    )
+    refinement_agent = ChatAgent(refinement_msg)
 
+    user_msg = input("Please specify your story.")
 
+    initial_user_str = (
+            "I will provide a description of a story arc."
+            "If the input is not satisfying you then ask specific questions about the story."
+            "Never forget: Do not summarize the story until asked."
+            "Never forget: If you have not further questions respond with '<NO_QUESTION>'"
+                        + user_msg)
+
+    initial_user_msg = BaseMessage.make_user_message("User", initial_user_str)
+    response = refinement_agent.step(initial_user_msg,)
+
+    for i in range(max_steps):
+        if i == max_steps - 1:
+            break
+        if "<NO_QUESTION>" in response.msg:
+            break
+
+        # print_text_animated(response.msg.content)
+        print(response.msg.content)
+
+        refined_user_input = input("Please answer the given questions.")
+        refined_user_msg = BaseMessage.make_user_message("User",
+                                                         "Here is an update one the story we build."
+                                                         ""
+                                                         + refined_user_input)
+        response = refinement_agent.step(refined_user_msg)
+
+    result = refinement_agent.step(BaseMessage.make_user_message("User", "Now that you have all important information please generate"
+                                                                "a story description within 400 words."))
+    print_text_animated("Thank you for your input. Here is what i got: " + result.msg.content )
+    print("Thank you for your input. Here is what i got: " + result.msg.content )
 
 if __name__ == "__main__":
-    main()
+    # main()
+    refine_user_input()
