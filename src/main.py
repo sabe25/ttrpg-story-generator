@@ -11,21 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-from io import BytesIO
 
-from camel.configs import ChatGPTConfig
-from camel.memories import LongtermAgentMemory, ScoreBasedContextCreator, ChatHistoryBlock, VectorDBBlock, MemoryRecord, \
-    ChatHistoryMemory
-from camel.models import ModelFactory
-from camel.types import ModelType, OpenAIBackendRole, ModelPlatformType
-from camel.workforce import Workforce
 from camel.agents import ChatAgent
+from camel.configs import ChatGPTConfig
 from camel.messages import BaseMessage
+from camel.models import ModelFactory
 from camel.tasks import Task
-from camel.utils import print_text_animated, OpenAITokenCounter
-from camel.loaders.base_io import TxtFile
-from camel.loaders.unstructured_io import UnstructuredIO as uio
-from sympy import refine
+from camel.types import ModelType, OpenAIBackendRole, ModelPlatformType
+from camel.utils import print_text_animated
+from camel.workforce import Workforce
+
 
 def main(model=None, chat_turn_limit=10) -> None:
 
