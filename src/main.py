@@ -21,6 +21,8 @@ from camel.types import ModelType, OpenAIBackendRole, ModelPlatformType
 from camel.utils import print_text_animated
 from camel.workforce import Workforce
 
+from src.agents.stroy_arch_writer import create_story_arch_writer
+
 
 def main(model=None, chat_turn_limit=10) -> None:
 
@@ -68,30 +70,47 @@ def main(model=None, chat_turn_limit=10) -> None:
     print_text_animated(task.content)
 
 def refine_user_input(max_steps=10) -> str:
-    refinement_msg = BaseMessage.make_assistant_message(
-        "Story arch writer",
-        "You are a creative writer focused on writing story arch for dnd one-shots. "
-        "You create broad overviews of story archs. For you important is that each story has the following features."
-        "A plot hook, something that the player want to help or solve the problem"
-        "The environment, where the story is told."
-        "Additionally these elements could improve the story."
-        "Surprice Elements are also fun but optional, it is something the player are not expecting."
-        "Interesting Characters, brings depth and live to the story"
-        "A thread, something the players are eager to solve, whether it is a social conflict or existencial thread to a village you are open to it all."
-    )
-    refinement_agent = ChatAgent(refinement_msg)
+    refinement_agent = create_story_arch_writer()
 
     user_msg = input("Please specify your story.")
 
     initial_user_str = (
-            "I will provide a description of a story arc."
-            "The input should cover all information necessary to build the story. It should fullfill your important features."
-            # "Think about the input as a suggestion for the story. Ask yourself: Does the input provide enough information to build a good story?"
-            "If not then ask further questions about the story."
-            "Never forget: Do not summarize the story until asked."
-            "Never forget: If you have not further questions respond with '<NO_QUESTION>'"
-            "Here is the user message:"
-            + "{{" + user_msg + "}}")
+        f"""<task>
+                Verify whether the provided story arc includes all necessary elements for a Dungeons & Dragons one-shot narrative.
+            </task>
+            <criteria>
+                <element>
+                    <name>Plot Hook</name>
+                    <description>A compelling reason to engage the players in the story.</description>
+                </element>
+                <element>
+                    <name>Environment/Setting</name>
+                    <description>A defined and immersive location where the story unfolds.</description>
+                </element>
+                <element>
+                    <name>Main Thread/Conflict</name>
+                    <description>A clear goal or conflict driving the story.</description>
+                </element>
+                <element>
+                    <name>NPCs</name>
+                    <description>Engaging non-player characters that add depth and support the narrative.</description>
+                </element>
+                <element>
+                    <name>Surprise Elements</name>
+                    <description>Optional twists or unexpected elements to intrigue players.</description>
+                </element>
+            </criteria>
+            <instructions>
+                <rule>Do not include player characters (heroes) in the assessment, as they are played by real individuals.</rule>
+                <rule>Do not summarize the story unless explicitly asked.</rule>
+                <rule>If all elements are covered and no further questions are needed, respond with "<NO_QUESTION>".</rule>
+                <rule>If any element is missing or unclear, ask specific questions to gather more details.</rule>
+                <rule>If any element is missing, provide ready-to-use examples tailored to fit the story's theme and tone.</rule>
+            </instructions>
+            <input>
+                <description>Here is the user message:</description>
+                <content>{user_msg}</content>
+            </input>""")
 
     initial_user_msg = BaseMessage.make_user_message("User", initial_user_str)
     response = refinement_agent.step(initial_user_msg, )
@@ -115,9 +134,32 @@ def refine_user_input(max_steps=10) -> str:
     result = refinement_agent.step(
         BaseMessage.make_user_message(
             "User",
-            "Give a story overview with the information give by the user."
-            "Structure the summary in the following blocks: player hook, story summary, important characters."
-            "The story summary should give detailed information about necessary story elements."))
+            """<task>
+                            Summarize the finalized story arc for a Dungeons & Dragons one-shot using the details provided in the previous conversation.
+                        </task>
+                        <instructions>
+                            <rule>Base the summary exclusively on the information gathered during the previous interaction.</rule>
+                            <rule>Structure the summary into the specified blocks for clarity and ease of understanding.</rule>
+                            <rule>Provide detailed and precise information about essential story elements.</rule>
+                            <rule>Focus on non-player characters (NPCs), narrative components, and setting; exclude player characters entirely.</rule>
+                        </instructions>
+                        <output>
+                            <format>XML</format>
+                            <structure>
+                                <block>
+                                    <name>Player Hook</name>
+                                    <description>Provide a compelling reason for players to engage with the story. This should clearly present the core motivation or problem.</description>
+                                </block>
+                                <block>
+                                    <name>Story Summary</name>
+                                    <description>Offer a detailed narrative overview, covering the key elements such as the setting, main conflict, objectives, and any critical twists or surprises.</description>
+                                </block>
+                                <block>
+                                    <name>Important Characters</name>
+                                    <description>Describe significant NPCs, including their roles, motivations, and relevance to the story.</description>
+                                </block>
+                            </structure>
+                        </output>"""))
 
     # print_text_animated("Thank you for your input. Here is what i got: " + result.msg.content)
     print("Thank you for your input. Here is what i got: " + result.msg.content)
