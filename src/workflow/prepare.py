@@ -1,5 +1,5 @@
-from src.agents.scene_creator import SceneCreator
 from src.agents.stroy_arch_writer import StoryArchWriter
+
 
 def refine_user_input(max_steps=10) -> str:
     agent = StoryArchWriter.create()
@@ -24,14 +24,3 @@ def refine_user_input(max_steps=10) -> str:
 
     print("Thank you for your input. Here is what i got: " + result.msg.content)
     return result.msg.content
-
-def create_scene_structure(story: str) -> list:
-    structure_agent = SceneCreator.create()
-    response = structure_agent.create_story_scenes(story)
-    print(response.msg.content)
-
-    # transition_steps = response.msg.content.split("\n")
-    # all_steps = [rows[0], *transition_steps, rows[1]]
-    # print(all_steps)
-
-    return []
