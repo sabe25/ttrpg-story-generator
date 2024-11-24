@@ -18,131 +18,9 @@ from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.tasks import Task
 from camel.types import ModelType, OpenAIBackendRole, ModelPlatformType
-from camel.utils import print_text_animated
 from camel.workforce import Workforce
 
-from src.agents.stroy_arch_writer import StoryArchWriter
-from pydantic.dataclasses import dataclass
-
-
-def main(model=None, chat_turn_limit=10) -> None:
-
-    workforce = Workforce("Dungeons and Dragons creative team"
-                          ## define new_agent_kwargs
-                          )
-
-    story_msg = BaseMessage.make_user_message(
-        "Story writer",
-        "You want to write emerging medival stories that can be used in a DnD setting." +
-        " You restrict your stories to the scope of dnd one-shots. You create diverse characters and know how to implement"+
-        " drama into characters."
-    )
-    story_agent = ChatAgent(story_msg)
-
-    workforce.add_single_agent_worker(
-      "An agent that write medival stories. Can define the story archs, develop npc characters",
-      worker=story_agent,
-    )
-
-    puzzle_msg = BaseMessage.make_user_message(
-        "Puzzle creator",
-        "You are a creative writer focused on puzzles in roleplaying. Your puzzles are organized in"
-        "social encounters, dungeon traps and environmental challanges. You always provide the DC (difficulty level) if necessary. "
-        "You always provide a description how the party could solve the puzzle. Give at least 3 possible solutions to a puzzle"
-    )
-    puzzle_agent = ChatAgent(puzzle_msg)
-
-    workforce.add_single_agent_worker(
-      "An agent that creates roleplaying puzzles. Ask this agent for engaging social encounters, dungeon traps and environmental challanges.",
-      worker=puzzle_agent,
-    )
-
-    task = Task(content="Create a original one-shot for the roleplaying game Dungeons and Dragons. "
-                "The result should be a 600 words document. It is organised in story intro and the different scences."
-                "Here is the story prompt: **Title: Whispers of the Lost Church**"
-                "In the heart of a dense, shadowy forest lies the quaint village of Eldergrove, a place once vibrant with laughter and warmth. However, a dark cloud now looms over the villagers, for their beloved church has mysteriously vanished, taking with it the solace and guidance it provided. The villagers, desperate and frightened, turn to a group of brave heroes for help, pleading with them to uncover the truth behind the church's disappearance."
-                "As the heroes arrive, they are greeted by a palpable sense of dread. The once-bustling village square is now eerily silent, the air thick with the whispers of restless spirits. The villagers recount chilling tales of ghostly apparitions haunting their homes at night, their mournful wails echoing through the trees. The absence of the church has left a void, awakening the spirits of the past who seek resolution for their unfinished business."
-                "The heroes must navigate the tangled paths of the forest, where shadows dance and the trees seem to whisper secrets. As they delve deeper into the mystery, they encounter strange phenomena: flickering lights in the distance, fleeting glimpses of spectral figures, and the feeling of being watched. The forest itself becomes a character in the story, its dense foliage and twisting paths both a guide and a trap."
-                "As the heroes investigate, they learn that the priest, in a fit of rage over the villagers' doubts and fears, teleported the church to an unknown realm, believing it would teach them a lesson. However, the unintended consequence has unleashed the spirits of those who once sought refuge within its walls. The heroes must confront the priest, who is now tormented by his actions, and persuade him to help restore balance to Eldergrove."
-                "In a climactic confrontation, the heroes must navigate the emotional turmoil of the priest and the anguished spirits, seeking a way to bring the church back and lay the restless souls to rest. With courage, compassion, and cleverness, they will uncover the truth behind the hauntings and restore peace to the village.",
-                id="0")
-
-    task = workforce.process_task(task)
-    print_text_animated(task.content)
-
-def refine_user_input(max_steps=10) -> str:
-    agent = StoryArchWriter.create()
-
-    user_msg = input("Please specify your story.")
-
-    response = agent.start_refinement(user_msg)
-
-    for i in range(max_steps):
-        if i == max_steps - 1:
-            break
-        if "<NO_QUESTION>" in response.msg:
-            break
-
-        # print_text_animated(response.msg.content)
-        print(response.msg.content)
-
-        refined_user_input = input("Please answer the given questions.")
-        response = agent.refine_furhter(refined_user_input)
-
-    result = agent.summarise()
-
-    print("Thank you for your input. Here is what i got: " + result.msg.content)
-    return result.msg.content
-
-def create_scene_structure(story: str) -> list:
-    structure_msg = BaseMessage.make_assistant_message(
-        "Scene creator",
-        "You are outlining the story in steps. Each step/encounter drives the story forward or reveal more information."
-        "You have three broad encounter options: combat, NPC interaction, and exploration (traps, puzzles, navigation). The goal is to make sure you don't have too much of the same stuff back-to-back."
-    )
-    structure_agent = ChatAgent(structure_msg)
-
-    # create first and last scene
-    firstLastResponse = structure_agent.step(
-        BaseMessage.make_user_message(
-            "User",
-            "Given the story, define the first and last scene/encounter."
-            "Each scene should be described in one sentence and should be labeled with an encounter option."
-            "For example: "
-            "- Follow the thief through the busteling city alleys (navigation)"
-            "- Sorcerous orbs speaking in riddles (puzzle)"
-            "- Secretive librarian (NPC interaction)"
-            "- Final fight with thief and his friends (combat)"
-            "Here is the story: "
-            "{{" + story + "}}"
-            "Define the first and last scene/encounter in the format of:"
-            "Story Start: <first scene>"
-            "Story End: <last scene>"))
-
-    rows = firstLastResponse.msg.content.split("\n")
-
-    # create in between steps
-    response = structure_agent.step(
-        BaseMessage.make_user_message(
-            "User",
-            "You need to find 4 to 8 encounters inbetween the first and the last scene."
-            "Each step should drive the story forward and offers clues to the next step"
-            "They should be ordered according to how the story unfolds"
-            "Do not include the first and the last step which are"
-            + firstLastResponse.msg.content +
-            "For example: "
-            "2. Follow the thief through the busteling city alleys (navigation)"
-            "3. Sorcerous orbs speaking in riddles in the library (puzzle)"
-            "4. Secretive librarian (NPC interaction)"
-        )
-    )
-    print(response.msg.content)
-
-    transition_steps = response.msg.content.split("\n")
-    all_steps = [rows[0], *transition_steps, rows[1]]
-    print(all_steps)
-
-    return all_steps
+from src.workflow import prepare, scenes
 
 def create_scene_writer_agent():
     # load example scenes
@@ -290,6 +168,6 @@ def write_scenes(all_steps, story) -> None:
 
 if __name__ == "__main__":
     # main()
-    story = refine_user_input()
-    all_steps = create_scene_structure(story)
+    story = prepare.refine_user_input()
+    all_steps = scenes.create_scene_structure(story)
     write_scenes(all_steps, story)
