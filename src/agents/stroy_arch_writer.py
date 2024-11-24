@@ -3,12 +3,13 @@ from __future__ import annotations
 from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from camel.responses import ChatAgentResponse
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel
+from pydantic.config import ConfigDict
 
 
-@dataclass
-class StoryArchWriter:
+class StoryArchWriter(BaseModel):
     agent: ChatAgent
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def create(cls) -> StoryArchWriter:
