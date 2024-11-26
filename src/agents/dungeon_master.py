@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from camel.agents import ChatAgent
 from camel.messages import BaseMessage
-from camel.responses import ChatAgentResponse
 from pydantic import BaseModel, ConfigDict
 
 
@@ -12,7 +11,7 @@ class DungeonMaster(BaseModel):
 
     @classmethod
     def create(cls) -> DungeonMaster:
-        structure_msg = BaseMessage.make_assistant_message(
+        msg = BaseMessage.make_assistant_message(
             "Dungeon Master",
             f"""
             <role>
@@ -37,5 +36,5 @@ class DungeonMaster(BaseModel):
                     </guidelines>
                 </responsibilities>
             </role>""")
-        agent = ChatAgent(structure_msg)
+        agent = ChatAgent(msg)
         return cls(agent=agent)
