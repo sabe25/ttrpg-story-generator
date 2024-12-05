@@ -161,6 +161,7 @@ def write_scenes(all_steps, story) -> None:
             next_scene = all_steps[cnt + 1]
 
         current_scene_desc = write_scene(scene_agent, current_scene, next_scene, previous_scene, story)
+        print(current_scene_desc)
         previous_scene = current_scene_desc
         scene_list.append(current_scene_desc)
         cnt += 1
@@ -170,4 +171,5 @@ if __name__ == "__main__":
     # main()
     story = prepare.refine_user_input()
     all_steps = scenes.create_scene_structure(story)
-    write_scenes(all_steps, story)
+    scene_decs = scenes.write_scenes(all_steps)
+    print(str.join('\n', scene_decs))
