@@ -38,3 +38,35 @@ class MonsterExpert(BaseModel):
             </role>""")
         agent = ChatAgent(msg)
         return cls(agent=agent)
+
+    def provide_feedback_to(self, scene_text) -> string:
+        prompt = f"""
+<prompt>
+    <description>
+        Analyse the provided Dungeons & Dragons scene_description and evaluate the choice of monsters from the perspective of a Monster Expert.
+    </description>
+    <instructions>
+        - Review the scene description to assess if the selected monsters align with the environment and setting described.
+        - Determine if the chosen monsters provide an appropriate level of challenge and engagement for the players' party.
+        - Suggest alternative monsters if the current selection does not fit the environment, story, or difficulty level.
+        - Ensure the monsters adhere to D&D rules and lore, respecting the ecosystem and thematic elements of the scene.
+        - Provide feedback on potential tweaks to improve the encounter, such as adjusting monster behavior, number, or abilities.
+    </instructions>
+    <output_format>
+        <feedback>
+            <format>Present your feedback in a bullet point list for easy review.</format>
+            <example_feedback>
+                - The chosen monster (Goblin) fits the forest environment but is underpowered for the party's current level. Consider using Hobgoblins or Worgs.
+                - The selection of Fire Elementals feels out of place in a swamp setting. Replace them with Will-o'-Wisps or Giant Frogs.
+                - Include environmental hazards or terrain features to make the encounter with the Ankheg more dynamic and challenging.
+                - The behavior of the monsters in this scene could better reflect their intelligence. Suggest having the Bandits retreat when outnumbered.
+                - Verify the monster CR aligns with the party's average level; the encounter may need scaling.
+            </example_feedback>
+        </feedback>
+    </output_format>
+    <scene_description>
+       {scene_text}
+    </scene_description>
+</prompt>"""
+        refined_user_msg = BaseMessage.make_user_message("User", prompt)
+        return self.agent.step(refined_user_msg).msg.content
