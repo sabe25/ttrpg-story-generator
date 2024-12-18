@@ -1,12 +1,9 @@
 import xml.etree.ElementTree as ET
 
-from camel.tasks import Task
-
 from src.agents.dungeon_master import DungeonMaster
 from src.agents.monster_expert import MonsterExpert
 from src.agents.scene_creator import SceneCreator
 from src.agents.scene_writer import SceneWriter
-from src.workflow.workforce import create_workforce
 
 
 def create_scene_structure(story: str) -> list:
