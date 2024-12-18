@@ -5,6 +5,7 @@ from camel.messages import BaseMessage
 from camel.responses import ChatAgentResponse
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
+from pathlib import Path
 
 
 class StoryArchWriter(BaseModel):
@@ -13,7 +14,9 @@ class StoryArchWriter(BaseModel):
 
     @classmethod
     def create(cls) -> StoryArchWriter:
-        with open("./agents/story_arch_writer_prompt.txt", "r") as file:
+        script_dir = Path(__file__).parent
+        promptPath = script_dir / "story_arch_writer_prompt.txt"
+        with open(promptPath, "r") as file:
             prompt = file.read()
 
         refinement_msg = BaseMessage.make_assistant_message(
