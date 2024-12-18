@@ -22,3 +22,9 @@ source venv/bin/active
 pip install --upgrade pip 
 pip install -r requirements.txt
 ```
+
+## Run the program
+
+```bash
+python -m src.main
+```
