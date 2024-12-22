@@ -15,7 +15,11 @@ if not then install it via
 brew install python@3.10
 ```
 
-This version runs with Ollama. Please download at `https://ollama.com/download` 
+This version runs with Ollama. Please download at `https://ollama.com/download`
+and run
+```bash
+ollama pull llama3.2
+```
 
 Then we can do the project installation
 ```bash
