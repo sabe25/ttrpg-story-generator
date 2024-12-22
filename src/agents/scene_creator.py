@@ -6,6 +6,8 @@ from camel.responses import ChatAgentResponse
 from pydantic import BaseModel, ConfigDict
 import xml.etree.ElementTree as ET
 
+from src.agents.chat_agents_factory import create_chat_agent
+
 
 class SceneCreator(BaseModel):
     agent: ChatAgent
@@ -68,7 +70,7 @@ class SceneCreator(BaseModel):
                             </instructions>
                         </role>"""
         )
-        structure_agent = ChatAgent(structure_msg)
+        structure_agent = create_chat_agent(structure_msg)
         return cls(agent=structure_agent)
 
     def create_story_start_and_end(self, story) -> list:

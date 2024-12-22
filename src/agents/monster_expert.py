@@ -4,6 +4,8 @@ from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 
+from src.agents.chat_agents_factory import create_chat_agent
+
 
 class MonsterExpert(BaseModel):
     agent: ChatAgent
@@ -36,10 +38,10 @@ class MonsterExpert(BaseModel):
                     </guidelines>
                 </responsibilities>
             </role>""")
-        agent = ChatAgent(msg)
+        agent = create_chat_agent(msg)
         return cls(agent=agent)
 
-    def provide_feedback_to(self, scene_text) -> string:
+    def provide_feedback_to(self, scene_text) -> str:
         prompt = f"""
 <prompt>
     <description>

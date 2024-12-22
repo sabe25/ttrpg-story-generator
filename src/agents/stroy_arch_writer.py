@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from pathlib import Path
 
+from src.agents.chat_agents_factory import create_chat_agent
+
 
 class StoryArchWriter(BaseModel):
     agent: ChatAgent
@@ -24,7 +26,7 @@ class StoryArchWriter(BaseModel):
             prompt
         )
 
-        agent = ChatAgent(refinement_msg)
+        agent = create_chat_agent(refinement_msg)
         return cls(agent=agent)
 
     def start_refinement(self, user_msg) -> ChatAgentResponse:

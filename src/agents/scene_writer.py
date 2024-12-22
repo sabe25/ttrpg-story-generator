@@ -4,6 +4,9 @@ from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 
+from src.agents.chat_agents_factory import create_chat_agent
+
+
 class SceneWriter(BaseModel):
     agent: ChatAgent
     example_text: str
@@ -47,10 +50,10 @@ class SceneWriter(BaseModel):
                     </presentation>
                 </guidelines>
             </role>""")
-        agent = ChatAgent(structure_msg)
+        agent = create_chat_agent(structure_msg)
         return cls(agent=agent, example_text=example_text)
 
-    def write_scene(self, current_scene, next_scene, previous_scene: str | None) -> string:
+    def write_scene(self, current_scene, next_scene, previous_scene: str | None) -> str:
         prompt = self.create_scene_prompt(current_scene, next_scene, previous_scene)
         refined_user_msg = BaseMessage.make_user_message("User", prompt)
         return self.agent.step(refined_user_msg).msg.content
