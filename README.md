@@ -15,6 +15,8 @@ if not then install it via
 brew install python@3.10
 ```
 
+This version runs with Ollama. Please download at `https://ollama.com/download` 
+
 Then we can do the project installation
 ```bash
 python3.10 -m venv venv
