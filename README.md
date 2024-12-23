@@ -21,7 +21,7 @@ and run
 ollama pull llama3.2
 ```
 
-Then we can do the project installation
+Then we can set up the project
 ```bash
 python3.10 -m venv venv
 source venv/bin/active
