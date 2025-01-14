@@ -58,7 +58,7 @@ class SceneWriter(BaseModel):
         refined_user_msg = BaseMessage.make_user_message("User", prompt)
         return self.agent.step(refined_user_msg).msg.content
 
-    def adapt_to_feedback(self, feedback) -> string:
+    def adapt_to_feedback(self, feedback) -> str:
         prompt = f"""
 <prompt>
     <description>
@@ -101,7 +101,6 @@ class SceneWriter(BaseModel):
                     - Include details that naturally progress to the next scene, leaving space for player interaction.
                     - Avoid describing the previous or next scenes directly.
                 </instructions>
-                {self.example_text}
             </prompt>"""
         return prompt
 

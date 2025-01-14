@@ -12,6 +12,7 @@ from src.agents.chat_agents_factory import create_chat_agent
 
 class StoryArchWriter(BaseModel):
     agent: ChatAgent
+    user_msgs: list[str]
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
@@ -27,9 +28,10 @@ class StoryArchWriter(BaseModel):
         )
 
         agent = create_chat_agent(refinement_msg)
-        return cls(agent=agent)
+        return cls(agent=agent, user_msgs=[])
 
     def start_refinement(self, user_msg) -> ChatAgentResponse:
+        self.user_msgs.append(user_msg)
         initial_user_str = (
             f"""<task>
                     Verify whether the provided story arc includes all necessary elements for a Dungeons & Dragons one-shot narrative.
@@ -59,26 +61,23 @@ class StoryArchWriter(BaseModel):
                 <instructions>
                     <rule>Do not include player characters (heroes) in the assessment, as they are played by real individuals.</rule>
                     <rule>Do not summarize the story unless explicitly asked.</rule>
-                    <rule>If all elements are covered and no further questions are needed, respond with "<NO_QUESTION>".</rule>
                     <rule>If any element is missing or unclear, ask specific questions to gather more details.</rule>
                     <rule>If any element is missing, provide ready-to-use examples tailored to fit the story's theme and tone.</rule>
                 </instructions>
-                <input>
-                    <description>Here is the user message:</description>
-                    <content>{user_msg}</content>
-                </input>""")
+                <user_input>{user_msg}</user_input>""")
 
         initial_user_msg = BaseMessage.make_user_message("User", initial_user_str)
-        return self.agent.step(initial_user_msg, )
+        return self.agent.step(initial_user_msg)
 
     def refine_furhter(self, user_msg) -> ChatAgentResponse:
+        self.user_msgs.append(user_msg)
         refined_user_msg = BaseMessage.make_user_message(
             "User",
-            "Here is an update one the story we build."
-            + "{{" + user_msg + "}}")
+            f"""<task>Consider this update to the story arc. If I selected one of your ready-to-use examples consider them for the story arch</task>
+                        <update>{user_msg}</update>""")
         return self.agent.step(refined_user_msg)
 
-    def summarise(self) -> ChatAgentResponse:
+    def summarise_from_memory(self) -> ChatAgentResponse:
         message = BaseMessage.make_user_message(
             "User",
             """<task>
@@ -107,4 +106,38 @@ class StoryArchWriter(BaseModel):
                                 </block>
                             </structure>
                         </output>""")
+        return self.agent.step(message)
+
+    def summarise_using_user_input(self) -> ChatAgentResponse:
+        message = BaseMessage.make_user_message(
+            "User",
+            f"""<task>
+                            Summarize the finalized story arc for a Dungeons & Dragons one-shot.
+                        </task>
+                        <instructions>
+                            <rule>Structure the summary into the specified blocks for clarity and ease of understanding.</rule>
+                            <rule>Provide detailed and precise information about essential story elements.</rule>
+                            <rule>Focus on non-player characters (NPCs), narrative components, and setting; exclude player characters entirely.</rule>
+                        </instructions>
+                        <output>
+                            <format>XML</format>
+                            <structure>
+                                <block>
+                                    <name>Player Hook</name>
+                                    <description>Provide a compelling reason for players to engage with the story. This should clearly present the core motivation or problem.</description>
+                                </block>
+                                <block>
+                                    <name>Story Summary</name>
+                                    <description>Offer a detailed narrative overview, covering the key elements such as the setting, main conflict, objectives, and any critical twists or surprises.</description>
+                                </block>
+                                <block>
+                                    <name>Important Characters</name>
+                                    <description>Describe significant NPCs, including their roles, motivations, and relevance to the story.</description>
+                                </block>
+                            </structure>
+                        </output>
+                        <input>
+                            <format>Each user message provides information about the story arc.</format>
+                            { "".join(f"<content>{x}</content>" for x in self.user_msgs) }
+                        </input>""")
         return self.agent.step(message)
