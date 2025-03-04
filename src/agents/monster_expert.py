@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from camel.agents import ChatAgent
-from camel.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 
-from src.agents.chat_agents_factory import create_chat_agent
+from src.agents.chat_agent import ChatAgent
 
 
 class MonsterExpert(BaseModel):
@@ -13,9 +11,7 @@ class MonsterExpert(BaseModel):
 
     @classmethod
     def create(cls) -> MonsterExpert:
-        msg = BaseMessage.make_assistant_message(
-            "Monster Expert",
-            f"""
+        msg = f"""
             <role>
                 <description>
                     You are a Monster Expert with extensive knowledge of the creatures in Dungeons & Dragons. Your role is to provide recommendations for monsters in combat encounters, ensuring they align with the environment and story context. You balance the challenge level, thematic relevance, and player engagement in your suggestions.
@@ -37,8 +33,8 @@ class MonsterExpert(BaseModel):
                         - Consider both common and lesser-known monsters to keep encounters fresh and engaging.
                     </guidelines>
                 </responsibilities>
-            </role>""")
-        agent = create_chat_agent(msg)
+            </role>"""
+        agent = ChatAgent.create(msg)
         return cls(agent=agent)
 
     def provide_feedback_to(self, scene_text) -> str:
@@ -70,5 +66,4 @@ class MonsterExpert(BaseModel):
        {scene_text}
     </scene_description>
 </prompt>"""
-        refined_user_msg = BaseMessage.make_user_message("User", prompt)
-        return self.agent.step(refined_user_msg).msg.content
+        return self.agent.invoke(prompt).content

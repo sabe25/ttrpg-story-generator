@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from camel.agents import ChatAgent
-from camel.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 
-from src.agents.chat_agents_factory import create_chat_agent
+from src.agents.chat_agent import ChatAgent
 
 
 class SceneWriter(BaseModel):
@@ -31,9 +29,7 @@ class SceneWriter(BaseModel):
                     <example>{examples[1]}</example>
                     <example>{examples[2]}</example>
                 </examples>"""
-        structure_msg = BaseMessage.make_assistant_message(
-            "Scene writer",
-            f"""
+        structure_msg = f"""
             <role>
                 <description>
                     You are an expert Dungeon Master (DM) scene description writer for Dungeons & Dragons games. Your role is to transform scenes from story outlines into detailed, actionable descriptions specifically tailored for a DM to use during gameplay.
@@ -49,14 +45,13 @@ class SceneWriter(BaseModel):
                         - Provide ready-to-use flavor text where applicable, clearly marked as optional.
                     </presentation>
                 </guidelines>
-            </role>""")
-        agent = create_chat_agent(structure_msg)
+            </role>"""
+        agent = ChatAgent.create(structure_msg)
         return cls(agent=agent, example_text=example_text)
 
     def write_scene(self, current_scene, next_scene, previous_scene: str | None) -> str:
         prompt = self.create_scene_prompt(current_scene, next_scene, previous_scene)
-        refined_user_msg = BaseMessage.make_user_message("User", prompt)
-        return self.agent.step(refined_user_msg).msg.content
+        return self.agent.invoke(prompt).content
 
     def adapt_to_feedback(self, feedback) -> str:
         prompt = f"""
@@ -68,8 +63,7 @@ class SceneWriter(BaseModel):
         {feedback}
     </feedback>
 </prompt>"""
-        user_msg = BaseMessage.make_user_message("User", prompt)
-        return self.agent.step(user_msg).msg.content
+        return self.agent.invoke(prompt).content
 
 
     def create_scene_prompt(self, current_scene, next_scene, previous_scene: str | None) -> str:

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from camel.agents import ChatAgent
-from camel.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
-
-from src.agents.chat_agents_factory import create_chat_agent
+from src.agents.chat_agent import ChatAgent
 
 
 class DungeonMaster(BaseModel):
@@ -13,9 +10,7 @@ class DungeonMaster(BaseModel):
 
     @classmethod
     def create(cls) -> DungeonMaster:
-        msg = BaseMessage.make_assistant_message(
-            "Dungeon Master",
-            f"""
+        msg = f"""
             <role>
                 <description>
                     You are a seasoned Dungeon Master (DM) and an expert in crafting and refining Dungeons & Dragons campaign materials. Your primary role is to review scene descriptions and story outlines to ensure they are polished, engaging, and practical for live gameplay. You will provide constructive feedback from a DM's perspective, focusing on enhancing player immersion and maintaining game flow.
@@ -37,14 +32,12 @@ class DungeonMaster(BaseModel):
                         - Always consider how the scene will play out in a dynamic game setting.
                     </guidelines>
                 </responsibilities>
-            </role>""")
-        agent = create_chat_agent(msg)
+            </role>"""
+        agent = ChatAgent.create(msg)
         return cls(agent=agent)
 
     def provide_feedback_to(self, scene_text) -> str:
-        refined_user_msg = BaseMessage.make_user_message(
-            "User",
-            f"""
+        refined_user_msg = f"""
 <prompt>
     <description>
         Analyse the given Dungeons & Dragons scene_description and evaluate it from the perspective of a Dungeon Master (DM) running the game.
@@ -70,5 +63,5 @@ class DungeonMaster(BaseModel):
     <scene_description>
        {scene_text}
     </scene_description>
-</prompt>""")
-        return self.agent.step(refined_user_msg).msg.content
+</prompt>"""
+        return self.agent.invoke(refined_user_msg).content

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from camel.agents import ChatAgent
-from camel.messages import BaseMessage
-from camel.responses import ChatAgentResponse
+from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 import xml.etree.ElementTree as ET
 
-from src.agents.chat_agents_factory import create_chat_agent
+from src.agents.chat_agent import ChatAgent
 
 
 class SceneCreator(BaseModel):
@@ -15,9 +13,7 @@ class SceneCreator(BaseModel):
 
     @classmethod
     def create(cls) -> SceneCreator:
-        structure_msg = BaseMessage.make_assistant_message(
-            "Scene creator",
-            f"""
+        structure_msg = f"""
                         <role>
                             You are a Scene Creator, responsible for crafting compelling scenes for a Dungeons & Dragons story arc.
                             Your goal is to structure the narrative into meaningful steps, each driving the story forward while balancing variety in encounters.
@@ -69,8 +65,7 @@ class SceneCreator(BaseModel):
                                 - Ensure NPCs are relevant and serve the narrative.
                             </instructions>
                         </role>"""
-        )
-        structure_agent = create_chat_agent(structure_msg)
+        structure_agent = ChatAgent.create(structure_msg)
         return cls(agent=structure_agent)
 
     def create_story_start_and_end(self, story) -> list:
@@ -97,14 +92,13 @@ class SceneCreator(BaseModel):
                 </output>
                 <input>{story}</input>"""
 
-        message = BaseMessage.make_user_message("User", task)
-        response = self.agent.step(message)
+        response = self.agent.invoke(task)
 
-        root = ET.fromstring(response.msg.content)
+        root = ET.fromstring(response.content)
         firstLastScene = [root.find('player_hook'), root.find('final_scene')]
         return firstLastScene
 
-    def create_story_scenes(self, story) -> ChatAgentResponse:
+    def create_story_scenes(self, story) -> BaseMessage:
         first_last_scene = self.create_story_start_and_end(story)
         task = f"""<task>
                         Create transition scenes that guide the players from the **player hook** to the **final scene** based on the given story arc.
@@ -136,5 +130,4 @@ class SceneCreator(BaseModel):
                         <player_hook>{first_last_scene[0]}</player_hook>
                         <final_scene>{first_last_scene[1]}</final_scene>
                     </input>"""
-        msg = BaseMessage.make_user_message("User", task)
-        return self.agent.step(msg)
+        return self.agent.invoke(task)

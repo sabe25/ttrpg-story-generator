@@ -14,7 +14,7 @@ def refine_user_input(max_steps=10) -> str:
             break
 
         # print_text_animated(response.msg.content)
-        print(response.msg.content)
+        print(response)
 
         refined_user_input = input("Please provide more information or leave blank if you are done.")
         print("---- Analysing -----")
@@ -24,6 +24,8 @@ def refine_user_input(max_steps=10) -> str:
         response = agent.refine_furhter(refined_user_input)
 
     result = agent.summarise_using_user_input()
+    print("Thank you for your input. Here is what i got:\n" + result)
 
-    print("Thank you for your input. Here is what i got:\n" + result.msg.content)
-    return result.msg.content
+    facts = agent.extract_story_facts()
+    print("Here are the facts", "\n".join(facts))
+    return result

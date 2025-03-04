@@ -18,7 +18,12 @@ def create_scene_structure(story: str) -> list:
         elements_list.append(child_as_string)
 
     return elements_list
-
+# TODO:
+# - remove feedback repeat
+# - no real roleplay in response
+# - less critic feedback
+# - no conclusion or recommendations
+# - describe features of the scene but do not describe it like the dm
 def create_scene_manually(all_steps) -> list:
     scene_agent = SceneWriter.create()
     dm_agent = DungeonMaster.create()

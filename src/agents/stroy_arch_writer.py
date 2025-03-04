@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from camel.agents import ChatAgent
-from camel.messages import BaseMessage
-from camel.responses import ChatAgentResponse
+from langchain_core.messages import BaseMessage
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from pathlib import Path
 
-from src.agents.chat_agents_factory import create_chat_agent
+from src.agents.chat_agent import ChatAgent
 
 
 class StoryArchWriter(BaseModel):
     agent: ChatAgent
     user_msgs: list[str]
+    user_ass_msgs: list[tuple[str, str]]
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
@@ -22,15 +21,10 @@ class StoryArchWriter(BaseModel):
         with open(promptPath, "r") as file:
             prompt = file.read()
 
-        refinement_msg = BaseMessage.make_assistant_message(
-            "Story arch writer",
-            prompt
-        )
+        agent = ChatAgent.create(prompt)
+        return cls(agent=agent, user_msgs=[], user_ass_msgs=[])
 
-        agent = create_chat_agent(refinement_msg)
-        return cls(agent=agent, user_msgs=[])
-
-    def start_refinement(self, user_msg) -> ChatAgentResponse:
+    def start_refinement(self, user_msg) -> str:
         self.user_msgs.append(user_msg)
         initial_user_str = (
             f"""<task>
@@ -66,21 +60,18 @@ class StoryArchWriter(BaseModel):
                 </instructions>
                 <user_input>{user_msg}</user_input>""")
 
-        initial_user_msg = BaseMessage.make_user_message("User", initial_user_str)
-        return self.agent.step(initial_user_msg)
+        return self.agent.invoke(initial_user_str).content
 
-    def refine_furhter(self, user_msg) -> ChatAgentResponse:
+    def refine_furhter(self, user_msg) -> str:
         self.user_msgs.append(user_msg)
-        refined_user_msg = BaseMessage.make_user_message(
-            "User",
-            f"""<task>Consider this update to the story arc. If I selected one of your ready-to-use examples consider them for the story arch</task>
-                        <update>{user_msg}</update>""")
-        return self.agent.step(refined_user_msg)
+        refined_user_msg = f"""<task>Consider this update to the story arc. If I selected one of your ready-to-use examples consider them for the story arch</task>
+                        <update>{user_msg}</update>"""
+        assistant_msg = self.agent.invoke(refined_user_msg)
+        self.user_ass_msgs.append((user_msg, assistant_msg.content))
+        return assistant_msg.content
 
-    def summarise_from_memory(self) -> ChatAgentResponse:
-        message = BaseMessage.make_user_message(
-            "User",
-            """<task>
+    def summarise_from_memory(self) -> str:
+        message = """<task>
                             Summarize the finalized story arc for a Dungeons & Dragons one-shot using the details provided in the previous conversation.
                         </task>
                         <instructions>
@@ -105,13 +96,11 @@ class StoryArchWriter(BaseModel):
                                     <description>Describe significant NPCs, including their roles, motivations, and relevance to the story.</description>
                                 </block>
                             </structure>
-                        </output>""")
-        return self.agent.step(message)
+                        </output>"""
+        return self.agent.invoke(message).content
 
-    def summarise_using_user_input(self) -> ChatAgentResponse:
-        message = BaseMessage.make_user_message(
-            "User",
-            f"""<task>
+    def summarise_using_user_input(self) -> str:
+        message = f"""<task>
                             Summarize the finalized story arc for a Dungeons & Dragons one-shot.
                         </task>
                         <instructions>
@@ -139,5 +128,28 @@ class StoryArchWriter(BaseModel):
                         <input>
                             <format>Each user message provides information about the story arc.</format>
                             { "".join(f"<content>{x}</content>" for x in self.user_msgs) }
-                        </input>""")
-        return self.agent.step(message)
+                        </input>"""
+        return self.agent.invoke(message).content
+
+    def extract_story_facts(self) -> list[str]:
+        (first_user, first_ass) = self.user_ass_msgs.pop()
+        fact1 =  self.agent.invoke(
+            f"""Extract facts about the story explained in the given text. 
+                The facts should be one sentence long and simple. 
+                The facts should be provided as a bulleted list.
+                <user_message>{first_user}</user_message>""")
+        print(fact1.content)
+        next_ass = first_ass
+        facts = [fact1.content]
+        for user, ass in self.user_ass_msgs:
+            fact = self.agent.invoke(
+                f"""Extract facts about the story explained in the given text. 
+                The facts should be one sentence long and simple. 
+                The facts should be provided as a bulleted list.
+                The user could choose topics or suggestions mentioned in the assistant message. Consider them as facts
+                <assistant_message>{next_ass}</assistant_message>
+                <user_message>{user}</user_message>""")
+            facts.append(fact.content)
+            next_ass = ass
+
+        return facts
