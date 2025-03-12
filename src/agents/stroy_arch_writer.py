@@ -24,7 +24,7 @@ class StoryArchWriter(BaseModel):
         agent = ChatAgent.create(prompt)
         return cls(agent=agent, user_msgs=[], user_ass_msgs=[])
 
-    def start_refinement(self, user_msg) -> str:
+    def start_refinement(self, user_msg) -> list[str]:
         self.user_msgs.append(user_msg)
         initial_user_str = (
             f"""<task>
@@ -60,15 +60,13 @@ class StoryArchWriter(BaseModel):
                 </instructions>
                 <user_input>{user_msg}</user_input>""")
 
-        return self.agent.invoke(initial_user_str).content
+        return self.agent.stream(initial_user_str)
 
-    def refine_furhter(self, user_msg) -> str:
+    def refine_furhter(self, user_msg) -> list[str]:
         self.user_msgs.append(user_msg)
         refined_user_msg = f"""<task>Consider this update to the story arc. If I selected one of your ready-to-use examples consider them for the story arch</task>
                         <update>{user_msg}</update>"""
-        assistant_msg = self.agent.invoke(refined_user_msg)
-        self.user_ass_msgs.append((user_msg, assistant_msg.content))
-        return assistant_msg.content
+        return self.agent.stream(refined_user_msg)
 
     def summarise_from_memory(self) -> str:
         message = """<task>

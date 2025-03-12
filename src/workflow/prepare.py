@@ -1,31 +1,38 @@
 from src.agents.stroy_arch_writer import StoryArchWriter
-
+import streamlit as st
 
 def refine_user_input(max_steps=10) -> str:
     agent = StoryArchWriter.create()
+    with st.chat_message("ai"):
+        st.write("Hi there 👋 I would like to create a story with you. Please, tell me about your ideas.")
 
-    user_msg = input("Please specify your story.")
-    print("---- Analysing -----")
+    result = ""
+    init_user_chat = st.chat_message("user")
+    if user_msg := init_user_chat.text_area("Your Story"):
 
-    response = agent.start_refinement(user_msg)
+        with st.chat_message("ai"):
+            st.write_stream(agent.start_refinement(user_msg))
+            st.write("")
+            st.write("Please provide more information or leave blank if you are done.")
 
-    for i in range(max_steps):
-        if i == max_steps - 1:
-            break
+        for i in range(max_steps):
+            if i == max_steps - 1:
+                break
 
-        # print_text_animated(response.msg.content)
-        print(response)
+            user_chat = st.chat_message("user")
+            if user_msg := user_chat.text_area("Refinement"):
+                if len(user_msg) == 0:
+                    break
 
-        refined_user_input = input("Please provide more information or leave blank if you are done.")
-        print("---- Analysing -----")
-        if len(refined_user_input) == 0:
-            break
+                with st.chat_message("ai"):
+                    st.write_stream(agent.refine_furhter(user_msg))
+                    st.write("")
+                    st.write("Please provide more information or leave blank if you are done.")
 
-        response = agent.refine_furhter(refined_user_input)
 
-    result = agent.summarise_using_user_input()
-    print("Thank you for your input. Here is what i got:\n" + result)
+        result = agent.summarise_using_user_input()
+        print("Thank you for your input. Here is what i got:\n" + result)
 
-    facts = agent.extract_story_facts()
-    print("Here are the facts", "\n".join(facts))
+        facts = agent.extract_story_facts()
+        print("Here are the facts", "\n".join(facts))
     return result
